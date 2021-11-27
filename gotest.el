@@ -52,13 +52,19 @@ See https://getgb.io."
   :type 'string
   :group 'gotest)
 
-(defvar-local go-test-args nil
-  "Arguments to pass to go test.
-  This variable is buffer-local, set using .dir-locals.el for example.")
+(defcustom go-test-args nil
+  "Arguments to pass to go test."
+  :type 'string
+  :group 'gotest)
 
 (defvar-local go-run-args nil
   "Arguments to pass to go run.
   This variable is buffer-local, set using .dir-locals.el for example.")
+
+(defcustom go-bench-args nil
+  "Arguments to pass to go run -bench."
+  :type 'string
+  :group 'gotest)
 
 (defvar go-test-history nil
   "History list for go test command arguments.")
@@ -359,7 +365,7 @@ For example, if the current buffer is `foo.go', the buffer for
 
 
 (defun go-test--arguments (args)
-  "Make the go test command argurments using `ARGS'."
+  "Make the go test command arguments using `ARGS'."
   (let ((opts args))
     (when go-test-args
       (setq opts (s-concat go-test-args " " opts)))
@@ -367,6 +373,13 @@ For example, if the current buffer is `foo.go', the buffer for
       (setq opts (s-concat "-v " opts)))
     (go-test--get-arguments opts 'go-test-history)))
 
+(defun go-bench--arguments (args)
+  "Make the go test -bench command arguments using `ARGS'."
+  (let ((cmd "-run ^NOTHING -bench")
+	(opts args))
+    (when go-bench-args
+      (setq opts (s-concat go-bench-args " " opts)))
+    (s-concat cmd " " opts)))
 
 ;; (defun go-test-compilation-hook (p)
 ;;   "Add compilation hooks."
@@ -514,22 +527,23 @@ For example, if the current buffer is `foo.go', the buffer for
   (interactive)
   (let ((benchmark-name (go-test--get-current-benchmark)))
     (when benchmark-name
-      (go-test--go-test (s-concat "-run ^NOTHING -bench " benchmark-name "\\$")))))
-
+      (go-test--go-test (go-bench--arguments
+			 (s-concat benchmark-name "\\$"))))))
 
 ;;;###autoload
 (defun go-test-current-file-benchmarks ()
   "Launch go benchmark on current file benchmarks."
   (interactive)
   (let ((benchmarks (go-test--get-current-file-benchmarks)))
-    (go-test--go-test (s-concat "-run ^NOTHING -bench '" benchmarks "'"))))
+    (go-test--go-test (go-bench--arguments
+		       (s-concat "'" benchmarks "'")))))
 
 
 ;;;###autoload
 (defun go-test-current-project-benchmarks ()
   "Launch go benchmark on current project."
   (interactive)
-  (go-test--go-test (s-concat "-run ^NOTHING -bench .")))
+  (go-test--go-test (go-bench--arguments ".")))
 
 
 ;; Coverage
