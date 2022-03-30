@@ -375,11 +375,11 @@ For example, if the current buffer is `foo.go', the buffer for
 
 (defun go-bench--arguments (args)
   "Make the go test -bench command arguments using `ARGS'."
-  (let ((cmd "-run ^NOTHING -bench")
-	(opts args))
+  (let ((cmd "-bench")
+	(opts "-run=-"))
     (when go-bench-args
       (setq opts (s-concat go-bench-args " " opts)))
-    (s-concat cmd " " opts)))
+    (s-concat opts " " cmd " " args)))
 
 ;; (defun go-test-compilation-hook (p)
 ;;   "Add compilation hooks."
