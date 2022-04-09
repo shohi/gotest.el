@@ -66,6 +66,11 @@ See https://getgb.io."
   :type 'string
   :group 'gotest)
 
+(defcustom go-fuzz-args nil
+  "Arguments to pass to go run -fuzz."
+  :type 'string
+  :group 'gotest)
+
 (defvar go-test-history nil
   "History list for go test command arguments.")
 
@@ -83,22 +88,22 @@ See https://getgb.io."
 
 (defface go-test--error-face
   '((t (:foreground "#FF0000")))
-  "Error face"
+  "Error face."
   :group 'go-test)
 
 (defface go-test--warning-face
   '((t (:foreground "#eeee00")))
-  "Warning face"
+  "Warning face."
   :group 'go-test)
 
 (defface go-test--pointer-face
   '((t (:foreground "#ff00ff")))
-  "Pointer face"
+  "Pointer face."
   :group 'go-test)
 
 (defface go-test--standard-face
   '((t (:foreground "#ffa500")))
-  "Standard face"
+  "Standard face."
   :group 'go-test)
 
 
@@ -255,13 +260,13 @@ When a numeric prefix argument is provided, it is used as the -count flag."
 (defun go-test--get-current-buffer ()
   "Return the test buffer for the current `buffer-file-name'.
 If `buffer-file-name' ends with `_test.go', `current-buffer' is returned.
-Otherwise, `ff-other-file-name' is used to find the test buffer.
+Otherwise, `ff-get-other-file' is used to find the test buffer.
 For example, if the current buffer is `foo.go', the buffer for
 `foo_test.go' is returned."
   (if (string-match "_test\.go$" buffer-file-name)
       (current-buffer)
     (let ((ff-always-try-to-create nil)
-	  (filename (ff-other-file-name)))
+	  (filename (ff-get-other-file)))
       (when filename
 	(find-file-noselect filename)))))
 
@@ -288,7 +293,7 @@ For example, if the current buffer is `foo.go', the buffer for
   (save-excursion
     (end-of-line)
     (if (search-backward-regexp
-         (format "%s\\(Test\\|Example\\)%s" go-test-regexp-prefix go-test-regexp-suffix)
+         (format "%s\\(Test\\|Example\\|Fuzz\\)%s" go-test-regexp-prefix go-test-regexp-suffix)
          nil t)
         (let ((suite-match (match-string-no-properties 1))
               (test-match (match-string-no-properties 2)))
@@ -309,6 +314,10 @@ For example, if the current buffer is `foo.go', the buffer for
 (defun go-test--get-current-benchmark ()
   "Return the current benchmark name."
   (go-test--get-current-data "Benchmark"))
+
+(defun go-test--get-current-fuzz ()
+  "Return the current fuzz name."
+  (go-test--get-current-data "Fuzz"))
 
 
 (defun go-test--get-current-example ()
@@ -381,6 +390,15 @@ For example, if the current buffer is `foo.go', the buffer for
       (setq opts (s-concat go-bench-args " " opts)))
     (s-concat opts " " cmd " " args)))
 
+(defun go-fuzz--arguments (args)
+  "Make the go test -fuzz command arguments using `ARGS'."
+  (let ((cmd "-fuzz")
+	(opts "-run=-"))
+    (when go-fuzz-args
+      (setq opts (s-concat go-fuzz-args " " opts)))
+    (s-concat opts " " cmd " " args)))
+
+
 ;; (defun go-test-compilation-hook (p)
 ;;   "Add compilation hooks."
 ;;   (set (make-local-variable 'compilation-error-regexp-alist-alist)
@@ -395,7 +413,7 @@ For example, if the current buffer is `foo.go', the buffer for
 ;;   (remove-hook 'compilation-start-hook 'go-test-compilation-hook))
 
 (defun go-test--go-test (args &optional env)
-  "Start the go test command using `ARGS'."
+  "Start the go test command using `ARGS' with optional ENV."
   (let ((buffer "*Go Test*")) ; (concat "*go-test " args "*")))
     (go-test--cleanup buffer)
     (compilation-start (go-test--get-program (go-test--arguments args) env)
@@ -531,6 +549,15 @@ For example, if the current buffer is `foo.go', the buffer for
 			 (s-concat benchmark-name "\\$"))))))
 
 ;;;###autoload
+(defun go-test-current-fuzz ()
+  "Launch go test on current fuzz."
+  (interactive)
+  (let ((fuzz-name (go-test--get-current-fuzz)))
+    (when fuzz-name
+      (go-test--go-test (go-fuzz--arguments
+			 (s-concat fuzz-name "\\$"))))))
+
+;;;###autoload
 (defun go-test-current-file-benchmarks ()
   "Launch go benchmark on current file benchmarks."
   (interactive)
@@ -568,7 +595,8 @@ For example, if the current buffer is `foo.go', the buffer for
 
 ;;;###autoload
 (defun go-run (&optional args)
-  "Launch go run on current buffer file."
+  "Launch go run on current buffer file.
+If ARGS is provided, it will be appended to command line args."
   (interactive)
   ;;(add-hook 'compilation-start-hook 'go-test-compilation-hook)
   (compile (go-test--go-run-get-program (go-test--go-run-arguments))
@@ -576,8 +604,6 @@ For example, if the current buffer is `foo.go', the buffer for
              ((or `(16) `(64)) t)))
   ;;(remove-hook 'compilation-start-hook 'go-test-compilation-hook))
   )
-
-
 
 (provide 'gotest)
 ;;; gotest.el ends here
